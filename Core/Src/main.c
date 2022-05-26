@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -69,106 +69,110 @@ static void MX_USART2_UART_Init(void);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+	/* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	/* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* USER CODE BEGIN Init */
+	/* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+	/* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+	/* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+	/* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_TIM3_Init();
-  MX_TIM4_Init();
-  MX_USART2_UART_Init();
-  uint8_t str[80];
-    HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // start pwm at channel 1
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2); // start pwm at channel 2
-    HAL_TIM_Base_Start(&htim3);   // start timer 3 inn default model
-    int32_t position_target = 600;
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_TIM3_Init();
+	MX_TIM4_Init();
+	MX_USART2_UART_Init();
+
+	uint8_t str[80];
+	HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
+	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // start pwm at channel 1
+	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2); // start pwm at channel 2
+	int32_t position_target = 600;
 
     /* USER CODE END 2 */
 
-        double kp = 0.51;
-        double ki = 0.02;
-        double kd = 0.01;
-        double up = 0, ui = 0, ud = 0;
+	double kp = 0.51;
+	double ki = 0.02;
+	double kd = 0.01;
+	double up = 0, ui = 0, ud = 0;
 
 
-        int32_t alpha = 0;
-        int32_t error = position_target;
-        int32_t pre_error = position_target;
-        int u = 0;
+	int32_t alpha = 0;
+	int32_t error = position_target;
+	int32_t pre_error = position_target;
+	int u = 0;
 
-        double periods = 0.01;
-        /* Infinite loop */
-        /* USER CODE BEGIN WHILE */
-        while (1)
-        {
-          /* USER CODE END WHILE */
-      	  // get current iteration data
-      	  alpha = TIM4 -> CNT;
+	double periods = 0.01;
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
+	while (1)
+	{
+	  /* USER CODE END WHILE */
+	  // get current iteration data
+	  alpha = TIM4 -> CNT;
 
-      	  if(alpha > 65000) {
-      		  alpha = 0;
-      	  }
+	  if(alpha > 65000) {
+		  alpha = 0;
+	  }
 
-      	  error = position_target - alpha;
+	  error = position_target - alpha;
 
-      	  up = kp * error;
-      	  ui = ui + (error * (ki * periods));
-      	  ud = kd * ((error - pre_error)/(periods));
+	  up = kp * error;
+	  ui = ui + (error * (ki * periods));
+	  ud = kd * ((error - pre_error)/(periods));
 
 
-      	  u = (int)(ui + ud + up);
+	  u = (int)(ui + ud + up);
 
-      	  if(u > 100)
-      	  {
-      		  u = 100;
-      	  }
-      	  if(u < -100)
-      	  {
-      		  u = -100;
-      	  }
+	  if(u > 100)
+	  {
+		  u = 100;
+	  }
+	  if(u < -100)
+	  {
+		  u = -100;
+	  }
 
-      	  if(u > 0){
-      		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-      		  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1, u);
-      		  HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5,GPIO_PIN_RESET);
-      		  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,0);
-      	  }
-      	  else
-      	  {
-      		  u = -u;
-      		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
-      		  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
-      		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET );
-      		  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, u);
-      	  }
+	  sprintf((char*)str, "%8ld; %6ld; %6ld; %6d;\n\r", HAL_GetTick(), alpha, error, u);
+	  						HAL_UART_Transmit(&huart2, str, 50, 100);
 
-      	  sprintf((char*)str, "%8ld; %6ld; %6ld; %6d;\n\r", HAL_GetTick(), alpha, error, u); // @suppress("Float formatting support")
-      	  	      	    	HAL_UART_Transmit(&huart2, str, 50, 100);
-      	  pre_error = error;
-      	  HAL_Delay(periods);
+	  if(u > 0){
 
-          /* USER CODE BEGIN 3 */
-        }
-        /* USER CODE END 3 */
-      }
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+		  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1, u);
+		  HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5,GPIO_PIN_RESET);
+		  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,0);
+	  }
+	  else
+	  {
+		  u = -u;
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+		  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET );
+		  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, u);
+	  }
+
+
+	  pre_error = error;
+
+	  HAL_Delay(periods);
+
+	  /* USER CODE BEGIN 3 */
+	}
+	/* USER CODE END 3 */
+ }
 
 /**
   * @brief System Clock Configuration
